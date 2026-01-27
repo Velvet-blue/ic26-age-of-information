@@ -1,8 +1,10 @@
 from src.config import np, njit
 
+
 @njit
 def throughput(arrival_prob, send_prob, time=10000):
-    # Gera todas as decisões aleatórias de uma vez (economiza tempo de chamada de função)
+    """Gera todas as decisões aleatórias de uma vez
+    (economiza tempo de chamada de função)"""
     arrivals_A = np.random.random(time) < arrival_prob
     arrivals_B = np.random.random(time) < arrival_prob
     sends_A = np.random.random(time) < send_prob
@@ -15,8 +17,10 @@ def throughput(arrival_prob, send_prob, time=10000):
     # O loop ainda existe, mas os acessos ao array NumPy são otimizados
     for t in range(time):
         # Chegada
-        if arrivals_A[t]: A_have = True
-        if arrivals_B[t]: B_have = True
+        if arrivals_A[t]:
+            A_have = True
+        if arrivals_B[t]:
+            B_have = True
 
         A_willsend = A_have and sends_A[t]
         B_willsend = B_have and sends_B[t]
