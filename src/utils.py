@@ -90,7 +90,6 @@ def make_metric_func(metrics_data):
         return np.vectorize(func)
     elif isinstance(metrics_data, np.ndarray):
         domain_size = len(metrics_data)  # usar PROB_DOMAIN evita conflitos
-        print(domain_size)
 
         def metric_func(arrival_prob: float, send_prob: float):
             # encontra os índices mais próximos no domínio
