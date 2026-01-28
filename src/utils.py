@@ -2,8 +2,20 @@ from src.config import np, plt, sp
 from joblib import Parallel, delayed
 # import os
 
-PROB_DOMAIN = np.linspace(.02, .98, 49)
-PLOT_DOMAIN = np.arange(0.1, 1.0, 0.1)
+PROB_DOMAIN = np.arange(.02, 1, .02)
+PLOT_DOMAIN = np.arange(.1,  1, .1)
+
+
+# def simulate_metric_teste(metric_func, time: int, name: str = ""):
+#     tamanho = len(PROB_DOMAIN)
+#     simulation_data = np.empty((tamanho, tamanho))
+
+#     for i, a in enumerate(PROB_DOMAIN):
+#         for j, p in enumerate(PROB_DOMAIN):
+#             simulation_data[i, j] = metric_func(
+#                 arrival_prob=a, send_prob=p, time=time)
+
+#     return simulation_data
 
 
 def simulate_metric(metric_func, time: int, name: str = "", method="numpy"):
@@ -28,8 +40,8 @@ def simulate_metric(metric_func, time: int, name: str = "", method="numpy"):
     if method == "numpy":
         # método usando a função vetorizada da métrica
         vec_func = np.vectorize(metric_func)
-        A, P = np.meshgrid(PROB_DOMAIN, PROB_DOMAIN)
-        simulated_data = vec_func(P, A, time)
+        P, A = np.meshgrid(PROB_DOMAIN, PROB_DOMAIN)
+        simulated_data = vec_func(arrival_prob=A, send_prob=P, time=time)
 
     elif method == "joblib":
         # método usando a lib "joblib"
@@ -77,12 +89,13 @@ def make_metric_func(metrics_data):
         func = sp.lambdify([arrival_prob, send_prob], metrics_data, 'numpy')
         return np.vectorize(func)
     elif isinstance(metrics_data, np.ndarray):
-        domain_size = len(metrics_data) - 1  # usar PROB_DOMAIN evita conflitos
+        domain_size = len(metrics_data)  # usar PROB_DOMAIN evita conflitos
+        print(domain_size)
 
         def metric_func(arrival_prob: float, send_prob: float):
             # encontra os índices mais próximos no domínio
-            a_idx = int(np.round(arrival_prob*domain_size))
-            p_idx = int(np.round(send_prob*domain_size))
+            a_idx = int(np.round(arrival_prob*(domain_size + 1) - 1))
+            p_idx = int(np.round(send_prob*(domain_size + 1) - 1))
             return metrics_data[a_idx, p_idx]
 
         return np.vectorize(metric_func)
