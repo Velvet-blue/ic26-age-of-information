@@ -106,8 +106,8 @@ def make_metric_func(metrics_data):
 
 
 def plot_metric(
-        math_metric,
-        simulated_metric,
+        analytical_func,
+        simulation_data_func,
         cmap: str,
         title: str,
         axis: str = "p"
@@ -118,13 +118,13 @@ def plot_metric(
         case "p":
             ctrl_param = "a"
             xlabel = "Probabilidade de acesso (p)"
-            calc_math = lambda x: math_metric(x, PROB_DOMAIN)
-            calc_sim = lambda x: simulated_metric(arrival_prob=x, send_prob=PROB_DOMAIN)
+            calc_math = lambda x: analytical_func(x, PROB_DOMAIN)
+            calc_sim = lambda x: simulation_data_func(arrival_prob=x, send_prob=PROB_DOMAIN)
         case "a":
             ctrl_param = "p"
             xlabel = "Probabilidade de chegada (a)"
-            calc_math = lambda x: math_metric(PROB_DOMAIN, x)
-            calc_sim = lambda x: simulated_metric(arrival_prob=PROB_DOMAIN, send_prob=x)
+            calc_math = lambda x: analytical_func(PROB_DOMAIN, x)
+            calc_sim = lambda x: simulation_data_func(arrival_prob=PROB_DOMAIN, send_prob=x)
         case _:
             raise ValueError("Eixo desconhecido. Use 'p' ou 'a'.")
     for i, plt_value in enumerate(PLOT_DOMAIN):
@@ -147,16 +147,16 @@ def plot_metric(
 
 def compare_metric_plot(
         analytical_expr: sp.Expr,
-        simulated_data: np.ndarray,
+        simulation_data: np.ndarray,
         title: str,
         cmap: str = "viridis",
         axis: str = "p"
         ) -> None:
     metric_func = make_metric_func(analytical_expr)
-    simulated_metric = make_metric_func(simulated_data)
+    simulated_metric = make_metric_func(simulation_data)
     plot_metric(
-        math_metric=metric_func,
-        simulated_metric=simulated_metric,
+        analytical_func=metric_func,
+        simulation_data_func=simulated_metric,
         cmap=cmap,
         title=title,
         axis=axis
