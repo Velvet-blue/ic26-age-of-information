@@ -114,21 +114,22 @@ def plot_metric(
         ) -> None:
     plt.figure(figsize=(10, 6))
     color_map = plt.get_cmap(cmap)
-    for i, plt_value in enumerate(PLOT_DOMAIN):
-        if axis == "p":
+    match axis:
+        case "p":
             ctrl_param = "a"
             xlabel = "Probabilidade de acesso (p)"
-            math_plot = math_metric(plt_value, PROB_DOMAIN)
-            simulated_plot = simulated_metric(
-                arrival_prob=plt_value, send_prob=PROB_DOMAIN)
-        elif axis == "a":
+            calc_math = lambda x: math_metric(x, PROB_DOMAIN)
+            calc_sim = lambda x: simulated_metric(arrival_prob=x, send_prob=PROB_DOMAIN)
+        case "a":
             ctrl_param = "p"
             xlabel = "Probabilidade de chegada (a)"
-            math_plot = math_metric(PROB_DOMAIN, plt_value)
-            simulated_plot = simulated_metric(
-                arrival_prob=PROB_DOMAIN, send_prob=plt_value)
-        else:
+            calc_math = lambda x: math_metric(PROB_DOMAIN, x)
+            calc_sim = lambda x: simulated_metric(arrival_prob=PROB_DOMAIN, send_prob=x)
+        case _:
             raise ValueError("Eixo desconhecido. Use 'p' ou 'a'.")
+    for i, plt_value in enumerate(PLOT_DOMAIN):
+        math_plot = calc_math(plt_value)
+        simulated_plot = calc_sim(plt_value)
 
         color = color_map(i / len(PLOT_DOMAIN))
         plt.plot(PROB_DOMAIN, math_plot,
