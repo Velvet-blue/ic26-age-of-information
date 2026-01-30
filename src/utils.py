@@ -110,19 +110,20 @@ def plot_metric(
         simulation_data_func,
         cmap: str,
         title: str,
-        axis: str = "p"
+        axis: str = "p",
+        yrange = None
         ) -> None:
     plt.figure(figsize=(10, 6))
     color_map = plt.get_cmap(cmap)
     match axis:
         case "p":
-            ctrl_param = "a"
-            xlabel = "Probabilidade de acesso (p)"
+            ctrl_param = "$a$"
+            xlabel = "Probabilidade de acesso ($p$)"
             calc_math = lambda x: analytical_func(x, PROB_DOMAIN)
             calc_sim = lambda x: simulation_data_func(arrival_prob=x, send_prob=PROB_DOMAIN)
         case "a":
-            ctrl_param = "p"
-            xlabel = "Probabilidade de chegada (a)"
+            ctrl_param = "$p$"
+            xlabel = "Probabilidade de chegada ($a$)"
             calc_math = lambda x: analytical_func(PROB_DOMAIN, x)
             calc_sim = lambda x: simulation_data_func(arrival_prob=PROB_DOMAIN, send_prob=x)
         case _:
@@ -139,8 +140,10 @@ def plot_metric(
                  linestyle='None', marker='o', markersize=2)
     plt.xlabel(xlabel)
     plt.ylabel("Métrica")
+    if yrange is not None:
+        plt.ylim(yrange)
     plt.title(title)
-    plt.legend()
+    plt.legend(title = f"Parâmetro {ctrl_param}", bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.grid(True)
     plt.show()
 
