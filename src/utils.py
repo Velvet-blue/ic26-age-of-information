@@ -3,7 +3,7 @@ from joblib import Parallel, delayed
 # import os
 
 PROB_DOMAIN = np.arange(.02, 1, .02)
-PLOT_DOMAIN = np.arange(.1,  1, .1)
+PLOT_DOMAIN = np.arange(0.1,  1.0, .1)
 
 
 # def simulate_metric_teste(metric_func, time: int, name: str = ""):
@@ -83,12 +83,16 @@ def make_metric_func(metrics_data):
             returns the corresponding metric value.
     :rtype: function
     """
+    
     if isinstance(metrics_data, sp.Expr):
+
         # se for uma expressão simbólica, cria a função diretamente
         arrival_prob, send_prob = sp.symbols('a p')
         func = sp.lambdify([arrival_prob, send_prob], metrics_data, 'numpy')
         return np.vectorize(func)
+    
     elif isinstance(metrics_data, np.ndarray):
+
         domain_size = len(metrics_data)  # usar PROB_DOMAIN evita conflitos
 
         def metric_func(arrival_prob: float, send_prob: float):
@@ -96,9 +100,11 @@ def make_metric_func(metrics_data):
             a_idx = int(np.round(arrival_prob*(domain_size + 1) - 1))
             p_idx = int(np.round(send_prob*(domain_size + 1) - 1))
             return metrics_data[a_idx, p_idx]
-
+        
         return np.vectorize(metric_func)
+    
     else:
+
         raise ValueError(
             "metrics_data deve ser uma expressão simbólica ou um "
             "array numpy."
