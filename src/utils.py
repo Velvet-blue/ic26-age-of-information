@@ -153,7 +153,8 @@ def compare_metric_plot(
         simulation_data: np.ndarray,
         title: str,
         cmap: str = "viridis",
-        axis: str = "p"
+        axis: str = "p",
+        yrange = None
         ) -> None:
     metric_func = make_metric_func(analytical_expr)
     simulated_metric = make_metric_func(simulation_data)
@@ -162,5 +163,6 @@ def compare_metric_plot(
         simulation_data_func=simulated_metric,
         cmap=cmap,
         title=title,
-        axis=axis
+        axis=axis,
+        yrange=yrange
     )

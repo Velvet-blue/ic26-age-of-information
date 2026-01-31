@@ -123,7 +123,7 @@ def mean_delay_up_pack(arrival_prob, send_prob, time):
 
 
 @njit
-def AAoI_PAoI_sim(arrival_prob, send_prob, time=100):
+def AAoI_PAoI_sim(arrival_prob, send_prob, time):
 
     # rolagem de todos os dados
     arrivals_A = np.random.random(time) < arrival_prob
@@ -171,8 +171,8 @@ def AAoI_PAoI_sim(arrival_prob, send_prob, time=100):
         if arrivals_B[t]:
             B_have = True
 
-    # 4. Armazena o estado do AoI no final do processo
-    AAoI += current_aoi_A
+        # 4. Armazena o estado do AoI no final do processo
+        AAoI += current_aoi_A
 
     if successes > 0:
         AAoI = AAoI / time
