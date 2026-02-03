@@ -2,20 +2,11 @@ from src.config import np, plt, sp
 from joblib import Parallel, delayed
 # import os
 
-PROB_DOMAIN = np.arange(.02, 1, .02)
-PLOT_DOMAIN = np.arange(0.1,  1.0, .1)
-
-
-# def simulate_metric_teste(metric_func, time: int, name: str = ""):
-#     tamanho = len(PROB_DOMAIN)
-#     simulation_data = np.empty((tamanho, tamanho))
-
-#     for i, a in enumerate(PROB_DOMAIN):
-#         for j, p in enumerate(PROB_DOMAIN):
-#             simulation_data[i, j] = metric_func(
-#                 arrival_prob=a, send_prob=p, time=time)
-
-#     return simulation_data
+PAR_STEP = .02
+P_DOMAIN = np.arange(PAR_STEP, 1.0, PAR_STEP)
+A_DOMAIN = np.arange(PAR_STEP, 1.0 + PAR_STEP, PAR_STEP)
+PLOT_INTERVAL = 0.1
+PLOT_DOMAIN = np.arange(0.1,  1.1, .1)
 
 
 def simulate_metric(metric_func, time: int, name: str = "", method="numpy"):
@@ -40,19 +31,20 @@ def simulate_metric(metric_func, time: int, name: str = "", method="numpy"):
     if method == "numpy":
         # método usando a função vetorizada da métrica
         vec_func = np.vectorize(metric_func)
-        P, A = np.meshgrid(PROB_DOMAIN, PROB_DOMAIN)
+        P, A = np.meshgrid(P_DOMAIN, A_DOMAIN)
+        # !!!
         simulated_data = vec_func(arrival_prob=A, send_prob=P, time=time)
 
     elif method == "joblib":
         # método usando a lib "joblib"
         results = Parallel(n_jobs=-1)(
             delayed(metric_func)(arrival_prob=a, send_prob=p, time=time)
-            for a in PROB_DOMAIN
-            for p in PROB_DOMAIN
+            for a in A_DOMAIN
+            for p in P_DOMAIN
         )
         simulated_data = np.array(results).reshape(
-            len(PROB_DOMAIN),
-            len(PROB_DOMAIN)
+            len(A_DOMAIN),
+            len(P_DOMAIN)
             )
 
     else:
@@ -83,7 +75,7 @@ def make_metric_func(metrics_data):
             returns the corresponding metric value.
     :rtype: function
     """
-    
+
     if isinstance(metrics_data, sp.Expr):
 
         # se for uma expressão simbólica, cria a função diretamente
@@ -97,8 +89,8 @@ def make_metric_func(metrics_data):
 
         def metric_func(arrival_prob: float, send_prob: float):
             # encontra os índices mais próximos no domínio
-            a_idx = int(np.round(arrival_prob*(domain_size + 1) - 1))
-            p_idx = int(np.round(send_prob*(domain_size + 1) - 1))
+            a_idx = int(np.round(arrival_prob*(domain_size) - 1))
+            p_idx = int(np.round(send_prob*(domain_size) - 1))
             return metrics_data[a_idx, p_idx]
         
         return np.vectorize(metric_func)
@@ -123,26 +115,30 @@ def plot_metric(
     color_map = plt.get_cmap(cmap)
     match axis:
         case "p":
+            prob_domain = P_DOMAIN
+            plot_domain = PLOT_DOMAIN
             ctrl_param = "$a$"
             xlabel = "Probabilidade de acesso ($p$)"
-            calc_math = lambda x: analytical_func(x, PROB_DOMAIN)
-            calc_sim = lambda x: simulation_data_func(arrival_prob=x, send_prob=PROB_DOMAIN)
+            calc_math = lambda x: analytical_func(x, prob_domain)
+            calc_sim = lambda x: simulation_data_func(arrival_prob=x, send_prob=prob_domain)
         case "a":
+            prob_domain = A_DOMAIN
+            plot_domain = PLOT_DOMAIN[PLOT_DOMAIN != 1.0]  # evita o 1.0 exato para $p$
             ctrl_param = "$p$"
             xlabel = "Probabilidade de chegada ($a$)"
-            calc_math = lambda x: analytical_func(PROB_DOMAIN, x)
-            calc_sim = lambda x: simulation_data_func(arrival_prob=PROB_DOMAIN, send_prob=x)
+            calc_math = lambda x: analytical_func(prob_domain, x)
+            calc_sim = lambda x: simulation_data_func(arrival_prob=prob_domain, send_prob=x)
         case _:
             raise ValueError("Eixo desconhecido. Use 'p' ou 'a'.")
-    for i, plt_value in enumerate(PLOT_DOMAIN):
+    for i, plt_value in enumerate(plot_domain):
         math_plot = calc_math(plt_value)
         simulated_plot = calc_sim(plt_value)
 
-        color = color_map(i / len(PLOT_DOMAIN))
-        plt.plot(PROB_DOMAIN, math_plot,
+        color = color_map(i / len(plot_domain))
+        plt.plot(prob_domain, math_plot,
                  label=f"{ctrl_param} = {plt_value:.2f}",
                  color=color, linestyle='-', lw=2)
-        plt.plot(PROB_DOMAIN, simulated_plot, color=color,
+        plt.plot(prob_domain, simulated_plot, color=color,
                  linestyle='None', marker='o', markersize=2)
     plt.xlabel(xlabel)
     plt.ylabel("Métrica")
@@ -171,4 +167,35 @@ def compare_metric_plot(
         title=title,
         axis=axis,
         yrange=yrange
+    )
+
+
+if __name__ == "__main__":
+    import simulations as sim
+    a, p = sp.symbols('a p') # arrival and access probabilities symbols
+
+    P = sp.Matrix([
+        [(1-a)**2,    a*(1-a),          a*(1-a),          a**2              ],
+        [p*(1-a)**2,  (1-a)*(1-p+p*a),  p*a*(1-a),        a*(1-p+p*a)       ],
+        [p*(1-a)**2,  p*a*(1-a),        (1-a)*(1-p+p*a),  a*(1-p+p*a)       ],
+        [0,           p*(1-a)*(1-p),    p*(1-p)*(1-a),    p**2 + (1-p)*(1-p+2*p*a) ]
+    ])
+
+    pi00s, pi01s, pi10s, pi11s = sp.symbols('pi00 pi01 pi10 pi11')
+    pi = sp.Matrix([pi00s, pi01s, pi10s, pi11s])
+
+    # equações: pi = pi P  e soma(pi)=1
+    eqs = list((pi.T * P - pi.T)[0,:])
+    eqs[-1] = pi00s + pi01s + pi10s + pi11s - 1
+    sol = sp.solve(eqs, [pi00s, pi01s, pi10s, pi11s], dict=True)
+    sol = sol[0]  # dicionário com pi00,pi01,pi10,pi11
+    pi00, pi01, pi10, pi11 = [sol[pi00s], sol[pi01s], sol[pi10s], sol[pi11s]]
+    throughput_expr = sp.simplify(pi01*p + pi10*p + 2*pi11*p*(1-p))
+    throughput_data = simulate_metric(sim.throughput, time=20000, method="numpy")
+    compare_metric_plot(
+        analytical_expr=throughput_expr,
+        simulation_data=throughput_data,
+        title="Throughput",
+        cmap="viridis",
+        axis="p"
     )

@@ -14,7 +14,7 @@ def throughput(arrival_prob, send_prob, time):
     sends_A = np.random.random(time) < send_prob
     sends_B = np.random.random(time) < send_prob
 
-    mean_thr = 0
+    total_thr = 0
     A_have = False
     B_have = False
 
@@ -31,15 +31,54 @@ def throughput(arrival_prob, send_prob, time):
 
         # Sucesso A
         if A_willsend and not B_willsend:
-            mean_thr += 1
+            total_thr += 1
             A_have = False
         # Sucesso B
         elif B_willsend and not A_willsend:
-            mean_thr += 1
+            total_thr += 1
             B_have = False
 
-    return mean_thr / time
+    return total_thr / time
 
+
+@njit
+def disposal_rate(arrival_prob, send_prob, time):
+    """
+    Taxa de descarte de pacotes no nó de update
+    """
+
+    arrivals_A = np.random.random(time) < arrival_prob
+    arrivals_B = np.random.random(time) < arrival_prob
+    sends_A = np.random.random(time) < send_prob
+    sends_B = np.random.random(time) < send_prob
+
+    total_disposal = 0
+    A_have = False
+    B_have = False
+
+    # O loop ainda existe, mas os acessos ao array NumPy são otimizados
+    for t in range(time):
+        # Chegada
+        if arrivals_A[t]:
+            if A_have:
+                total_disposal += 1
+            A_have = True
+
+        if arrivals_B[t]:
+            B_have = True
+
+        A_willsend = A_have and sends_A[t]
+        B_willsend = B_have and sends_B[t]
+
+        # Sucesso A
+        if A_willsend and not B_willsend:
+            A_have = False
+
+        # Sucesso B
+        elif B_willsend and not A_willsend:
+            B_have = False
+
+    return total_disposal / time
 
 @njit
 def occupation_up_pack(arrival_prob, send_prob, time):
@@ -110,7 +149,7 @@ def mean_delay_up_pack(arrival_prob, send_prob, time):
             A_have = False
             t_arrival = 0
         if B_willsend and not A_willsend:
-            B_have = 0
+            B_have = False
 
         # 3. Lógica de Chegada
         if arrivals_A[t]:
@@ -120,6 +159,90 @@ def mean_delay_up_pack(arrival_prob, send_prob, time):
             B_have = True
 
     return total_delay / number_successes if number_successes > 0 else None
+
+
+@njit
+def mean_delay_disc_pack(arrival_prob, send_prob, time):
+    """
+    tempo médio de permanência de um pacote no nó até ser descartado
+    """
+    arrivals_A = np.random.random(time) < arrival_prob
+    arrivals_B = np.random.random(time) < arrival_prob
+    sends_A = np.random.random(time) < send_prob
+    sends_B = np.random.random(time) < send_prob
+
+    total_delay = 0
+    number_discards = 0
+
+    t_arrival = 0
+    A_have = False
+    B_have = False
+    for t in range(time):
+
+        # 2. Lógica de Transmissão (acontece no final do slot de tempo)
+        A_willsend = A_have and sends_A[t]
+        B_willsend = B_have and sends_B[t]
+
+        if A_willsend and not B_willsend: # Sucesso de A
+            A_have = False
+        if B_willsend and not A_willsend:
+            B_have = False
+
+        # 3. Lógica de Chegada
+        if arrivals_A[t]:
+            if A_have:
+                total_delay += (t - t_arrival)
+                number_discards += 1
+            A_have = True
+            t_arrival = t
+        if arrivals_B[t]:
+            B_have = True
+
+    return total_delay / number_discards if number_discards > 0 else None
+
+
+@njit
+def mean_delay_any_pack(arrival_prob, send_prob, time):
+    """
+    tempo médio de permanência de um pacotes no nó
+    até ser descartado ou transmitido com sucesso (W)
+    """
+    arrivals_A = np.random.random(time) < arrival_prob
+    arrivals_B = np.random.random(time) < arrival_prob
+    sends_A = np.random.random(time) < send_prob
+    sends_B = np.random.random(time) < send_prob
+
+    total_delay = 0
+    number_exits = 0
+
+    t_arrival = 0
+    A_have = False
+    B_have = False
+    for t in range(time):
+
+        # 2. Lógica de Transmissão (acontece no final do slot de tempo)
+        A_willsend = A_have and sends_A[t]
+        B_willsend = B_have and sends_B[t]
+
+        if A_willsend and not B_willsend: # Sucesso de A
+            total_delay += (t - t_arrival)
+            number_exits += 1
+            A_have = False
+            t_arrival = 0
+        if B_willsend and not A_willsend:
+            B_have = False
+
+        # 3. Lógica de Chegada
+        if arrivals_A[t]:
+            if A_have:
+                total_delay += (t - t_arrival)
+                number_exits += 1
+            A_have = True
+            t_arrival = t
+        if arrivals_B[t]:
+            B_have = True
+
+    return total_delay / number_exits if number_exits > 0 else None
 
 
 @njit
