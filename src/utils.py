@@ -3,9 +3,10 @@ from joblib import Parallel, delayed
 import os
 
 PAR_STEP = .02
+PLOT_INTERVAL = 0.1
+
 P_DOMAIN = np.arange(PAR_STEP, 1.0, PAR_STEP)
 A_DOMAIN = np.arange(PAR_STEP, 1.0 + PAR_STEP, PAR_STEP)
-PLOT_INTERVAL = 0.1
 PLOT_DOMAIN = np.arange(0.1,  1.1, .1)
 
 
@@ -138,6 +139,7 @@ def plot_metric(
     plt.ylabel("Métrica")
     if yrange is not None:
         plt.ylim(yrange)
+    plt.xlim(0, 1)
     plt.title(title)
     plt.legend(title = f"Parâmetro {ctrl_param}", bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.grid(True)

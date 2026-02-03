@@ -35,7 +35,6 @@ def throughput(arrival_prob, send_prob, time):
             A_have = False
         # Sucesso B
         elif B_willsend and not A_willsend:
-            total_thr += 1
             B_have = False
 
     return total_thr / time
