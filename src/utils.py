@@ -1,6 +1,6 @@
 from src.config import np, plt, sp
 from joblib import Parallel, delayed
-# import os
+import os
 
 PAR_STEP = .02
 P_DOMAIN = np.arange(PAR_STEP, 1.0, PAR_STEP)
@@ -51,15 +51,9 @@ def simulate_metric(metric_func, time: int, name: str = "", method="numpy"):
         raise ValueError("Método desconhecido. Use 'numpy' ou 'joblib'.")
 
     # salva no google drive, se for passado o nome
-    # if name != "":
-    #     if os.path.exists('/content/drive'):
-    #         path = (
-    #             f'/content/drive/MyDrive/IC - Age of '
-    #             f'Information/Data/{name}.npy'
-    #         )
-    #         np.save(path, simulated_data)
-    # else:
-    #   print("Google Drive não montado. Dados não salvos.")
+    if name != "":
+            np.save(f'data/{name}.npy', simulated_data)
+            print(f"Dados salvos em 'data/{name}.npy'.")
 
     return simulated_data
 
