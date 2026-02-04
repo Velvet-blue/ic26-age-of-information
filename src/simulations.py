@@ -2,17 +2,24 @@ from src.config import np, njit
 
 
 @njit
+def gen_events(a, p, time):
+    """
+    Gera todas as decisões aleatórias de uma vez
+    """
+    arrivals_A = np.random.random(time) < a
+    arrivals_B = np.random.random(time) < a
+    sends_A = np.random.random(time) < p
+    sends_B = np.random.random(time) < p
+    return arrivals_A, arrivals_B, sends_A, sends_B
+
+
+@njit
 def throughput(arrival_prob, send_prob, time):
     """
     Throughput total do sistema (soma de todos os nós)
     """
-
-    # Gera todas as decisões aleatórias de uma vez
-    # (economiza tempo de chamada de função)
-    arrivals_A = np.random.random(time) < arrival_prob
-    arrivals_B = np.random.random(time) < arrival_prob
-    sends_A = np.random.random(time) < send_prob
-    sends_B = np.random.random(time) < send_prob
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
 
     total_thr = 0
     A_have = False
@@ -45,11 +52,8 @@ def disposal_rate(arrival_prob, send_prob, time):
     """
     Taxa de descarte de pacotes no nó de update
     """
-
-    arrivals_A = np.random.random(time) < arrival_prob
-    arrivals_B = np.random.random(time) < arrival_prob
-    sends_A = np.random.random(time) < send_prob
-    sends_B = np.random.random(time) < send_prob
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
 
     total_disposal = 0
     A_have = False
@@ -82,10 +86,8 @@ def disposal_rate(arrival_prob, send_prob, time):
 
 @njit
 def W_up_cdot_I(arrival_prob, send_prob, time):
-    arrivals_A = np.random.random(time) < arrival_prob
-    arrivals_B = np.random.random(time) < arrival_prob
-    sends_A = np.random.random(time) < send_prob
-    sends_B = np.random.random(time) < send_prob
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
 
     total_W_I = 0
     number_successes = 0
@@ -122,10 +124,8 @@ def W_up_cdot_I(arrival_prob, send_prob, time):
 @njit
 def I_squared(arrival_prob, send_prob, time):
 
-    arrivals_A = np.random.random(time) < arrival_prob
-    arrivals_B = np.random.random(time) < arrival_prob
-    sends_A = np.random.random(time) < send_prob
-    sends_B = np.random.random(time) < send_prob
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
 
     sum_I_sq = 0
     number_successes = 0
@@ -162,10 +162,8 @@ def occupation_up_pack(arrival_prob, send_prob, time):
     """L_up -> probabilidade de encontrar um pacote que será transmitido com
     sucesso, olhando para algum timeslot aleatório"""
 
-    arrivals_A = np.random.random(time) < arrival_prob
-    arrivals_B = np.random.random(time) < arrival_prob
-    sends_A = np.random.random(time) < send_prob
-    sends_B = np.random.random(time) < send_prob
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
 
     total_occupation = 0
     partial_occupation = 0
@@ -203,10 +201,8 @@ def mean_delay_up_pack(arrival_prob, send_prob, time):
     """
     tempo médio de permanência dos pacotes de uptade no nó (W_up)
     """
-    arrivals_A = np.random.random(time) < arrival_prob
-    arrivals_B = np.random.random(time) < arrival_prob
-    sends_A = np.random.random(time) < send_prob
-    sends_B = np.random.random(time) < send_prob
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
 
     total_delay = 0
     number_successes = 0
@@ -243,10 +239,8 @@ def mean_delay_disc_pack(arrival_prob, send_prob, time):
     """
     tempo médio de permanência de um pacote no nó até ser descartado
     """
-    arrivals_A = np.random.random(time) < arrival_prob
-    arrivals_B = np.random.random(time) < arrival_prob
-    sends_A = np.random.random(time) < send_prob
-    sends_B = np.random.random(time) < send_prob
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
 
     total_delay = 0
     number_discards = 0
@@ -284,10 +278,8 @@ def mean_delay_any_pack(arrival_prob, send_prob, time):
     tempo médio de permanência de um pacotes no nó
     até ser descartado ou transmitido com sucesso (W)
     """
-    arrivals_A = np.random.random(time) < arrival_prob
-    arrivals_B = np.random.random(time) < arrival_prob
-    sends_A = np.random.random(time) < send_prob
-    sends_B = np.random.random(time) < send_prob
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
 
     total_delay = 0
     number_exits = 0
@@ -326,10 +318,8 @@ def mean_delay_any_pack(arrival_prob, send_prob, time):
 def AAoI_PAoI_sim(arrival_prob, send_prob, time):
 
     # rolagem de todos os dados
-    arrivals_A = np.random.random(time) < arrival_prob
-    arrivals_B = np.random.random(time) < arrival_prob
-    sends_A = np.random.random(time) < send_prob
-    sends_B = np.random.random(time) < send_prob
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
 
     # Do ponto de vista do destino, a idade inicial é 0 (ou o tempo atual)
     current_aoi_A = 0
