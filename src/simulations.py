@@ -79,6 +79,84 @@ def disposal_rate(arrival_prob, send_prob, time):
 
     return total_disposal / time
 
+
+@njit
+def W_up_cdot_I(arrival_prob, send_prob, time):
+    arrivals_A = np.random.random(time) < arrival_prob
+    arrivals_B = np.random.random(time) < arrival_prob
+    sends_A = np.random.random(time) < send_prob
+    sends_B = np.random.random(time) < send_prob
+
+    total_W_I = 0
+    number_successes = 0
+
+    t_arrival = 0
+    t_update = 0
+    A_have = False
+    B_have = False
+    for t in range(time):
+
+        # 2. Lógica de Transmissão (acontece no final do slot de tempo)
+        A_willsend = A_have and sends_A[t]
+        B_willsend = B_have and sends_B[t]
+
+        if A_willsend and not B_willsend: # Sucesso de A
+            total_W_I += (t - t_arrival)*(t - t_update)
+            t_update = t
+            number_successes += 1
+            A_have = False
+            t_arrival = 0
+        if B_willsend and not A_willsend:
+            B_have = False
+
+        # 3. Lógica de Chegada
+        if arrivals_A[t]:
+            A_have = True
+            t_arrival = t
+        if arrivals_B[t]:
+            B_have = True
+
+    return (total_W_I / number_successes) if number_successes > 0 else None
+
+
+@njit
+def I_squared(arrival_prob, send_prob, time):
+
+    arrivals_A = np.random.random(time) < arrival_prob
+    arrivals_B = np.random.random(time) < arrival_prob
+    sends_A = np.random.random(time) < send_prob
+    sends_B = np.random.random(time) < send_prob
+
+    sum_I_sq = 0
+    number_successes = 0
+
+    t_update = 0
+    A_have = False
+    B_have = False
+    for t in range(time):
+
+        # 2. Lógica de Transmissão (acontece no final do slot de tempo)
+        A_willsend = A_have and sends_A[t]
+        B_willsend = B_have and sends_B[t]
+
+        if A_willsend and not B_willsend: # Sucesso de A
+            sum_I_sq += (t - t_update)**2
+            t_update = t
+            number_successes += 1
+            A_have = False
+        if B_willsend and not A_willsend:
+            B_have = False
+
+        # 3. Lógica de Chegada
+        if arrivals_A[t]:
+            A_have = True
+            t_arrival = t
+        if arrivals_B[t]:
+            B_have = True
+
+    return (sum_I_sq / number_successes) if number_successes > 0 else None
+
+
 @njit
 def occupation_up_pack(arrival_prob, send_prob, time):
     """L_up -> probabilidade de encontrar um pacote que será transmitido com
