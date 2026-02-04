@@ -27,11 +27,6 @@ def throughput(arrival_prob, send_prob, time):
 
     # O loop ainda existe, mas os acessos ao array NumPy são otimizados
     for t in range(time):
-        # Chegada
-        if arrivals_A[t]:
-            A_have = True
-        if arrivals_B[t]:
-            B_have = True
 
         A_willsend = A_have and sends_A[t]
         B_willsend = B_have and sends_B[t]
@@ -43,6 +38,12 @@ def throughput(arrival_prob, send_prob, time):
         # Sucesso B
         elif B_willsend and not A_willsend:
             B_have = False
+
+        # Chegada
+        if arrivals_A[t]:
+            A_have = True
+        if arrivals_B[t]:
+            B_have = True
 
     return total_thr / time
 
@@ -61,14 +62,6 @@ def disposal_rate(arrival_prob, send_prob, time):
 
     # O loop ainda existe, mas os acessos ao array NumPy são otimizados
     for t in range(time):
-        # Chegada
-        if arrivals_A[t]:
-            if A_have:
-                total_disposal += 1
-            A_have = True
-
-        if arrivals_B[t]:
-            B_have = True
 
         A_willsend = A_have and sends_A[t]
         B_willsend = B_have and sends_B[t]
@@ -80,6 +73,15 @@ def disposal_rate(arrival_prob, send_prob, time):
         # Sucesso B
         elif B_willsend and not A_willsend:
             B_have = False
+
+        # Chegada
+        if arrivals_A[t]:
+            if A_have:
+                total_disposal += 1
+            A_have = True
+
+        if arrivals_B[t]:
+            B_have = True
 
     return total_disposal / time
 
@@ -172,18 +174,11 @@ def occupation_up_pack(arrival_prob, send_prob, time):
 
     for t in range(time):
 
-        # 1. Lógica de Chegada
-        if arrivals_A[t]:
-            partial_occupation = 0
-            A_have = True
-        if arrivals_B[t]:
-            B_have = True
-
         # # métrica ocupação
         partial_occupation += 1 if A_have else 0
         # mean_delay += (t - tA_arrival) if A_have else 0
 
-        # 2. Lógica de Transmissão (acontece no final do slot de tempo)
+        # Lógica de Transmissão (acontece no final do slot de tempo)
         A_willsend = A_have and sends_A[t]
         B_willsend = B_have and sends_B[t]
 
@@ -192,6 +187,12 @@ def occupation_up_pack(arrival_prob, send_prob, time):
             A_have = False
         elif B_willsend and not A_willsend:
             B_have = False
+
+        if arrivals_A[t]:
+            partial_occupation = 0
+            A_have = True
+        if arrivals_B[t]:
+            B_have = True
 
 
     return total_occupation/time
