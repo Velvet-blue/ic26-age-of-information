@@ -372,3 +372,67 @@ def AAoI_PAoI_sim(arrival_prob, send_prob, time):
         AAoI = None
         PAoI = None
     return (AAoI, PAoI)
+
+
+@njit
+def evolution_AoI_sim(arrival_prob, send_prob, time=100):
+    ev_aoi_A = np.empty(time)
+    ev_aoi_B = np.empty(time)
+    times_succes_pack = np.empty(time)
+
+    # rolagem de todos os dados
+    arrivals_A = np.random.random(time) < arrival_prob
+    arrivals_B = np.random.random(time) < arrival_prob
+    sends_A = np.random.random(time) < send_prob
+    sends_B = np.random.random(time) < send_prob
+
+    # Do ponto de vista do destino, a idade inicial é 0 (ou o tempo atual)
+    current_aoi_A = 0
+    current_aoi_B = 0
+    successes = 0
+    PAoI = 0
+
+    # Variáveis dos transmissores
+    tA_arrival = 0
+    tB_arrival = 0
+    A_have = False
+    B_have = False
+
+    for t in range(time):
+
+      # 2. Lógica de Transmissão (acontece no slot)
+      A_tries = A_have and sends_A[t]
+      B_tries = B_have and sends_B[t]
+
+      # Sucesso de A
+      if A_tries and not B_tries:
+        PAoI += current_aoi_A - 1
+        current_aoi_A = (t - tA_arrival) + 1
+        times_succes_pack[successes] = tA_arrival
+        successes += 1
+        A_have = False
+
+      # Sucesso de B
+      if B_tries and not A_tries:
+        current_aoi_B = (t - tB_arrival) + 1
+        B_have = False
+
+      # 3. Lógica de Chegada (com substituição). Desde o tempo 0, pode ter pacotes.
+      # aqui, ficou mais fácil deixar as chegadas neste ponto
+      if arrivals_A[t]:
+        tA_arrival = t
+        A_have = True
+
+      if arrivals_B[t]:
+        tB_arrival = t
+        B_have = True
+
+      # 4. Armazena o estado do AoI no final do processo
+      ev_aoi_A[t] = current_aoi_A
+      ev_aoi_B[t] = current_aoi_B
+
+    # 1. A idade no destino sempre aumenta em 1 a cada time step
+      current_aoi_A += 1
+      current_aoi_B += 1
+
+    return ev_aoi_A, ev_aoi_B, times_succes_pack[:successes], PAoI/successes, successes
