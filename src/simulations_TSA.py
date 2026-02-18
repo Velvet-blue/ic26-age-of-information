@@ -57,7 +57,7 @@ def AAoI_PAoI_sim(arrival_prob, send_prob, time, threshold=0):
         Age_B += 1
 
     if successes > 0:
-        AAoI = AAoI / time
+        AAoI = AAoI / time + 1/2
         PAoI = PAoI / successes
     else:
         AAoI = np.nan

@@ -160,6 +160,117 @@ def I_squared(arrival_prob, send_prob, time):
 
 
 @njit
+def X0_dot_X1(arrival_prob, send_prob, time):
+
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
+
+    sum_X0X1 = 0
+    number_successes = 0
+
+    t_update = 0
+    t_arrival = 0
+    A_have = False
+    B_have = False
+    for t in range(time):
+
+        # 2. Lógica de Transmissão (acontece no final do slot de tempo)
+        A_willsend = A_have and sends_A[t]
+        B_willsend = B_have and sends_B[t]
+
+        if A_willsend and not B_willsend: # Sucesso de A
+            sum_X0X1 += (t - t_arrival)*(t_arrival - t_update)
+            t_update = t
+            number_successes += 1
+            A_have = False
+        if B_willsend and not A_willsend:
+            B_have = False
+
+        # 3. Lógica de Chegada
+        if arrivals_A[t] and not A_have:
+            A_have = True
+            t_arrival = t
+        if arrivals_B[t]:
+            B_have = True
+
+    return (sum_X0X1 / number_successes) if number_successes > 0 else None
+
+
+@njit
+def X0_sqr(arrival_prob, send_prob, time):
+
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
+
+    sum_X0_sqr = 0
+    number_successes = 0
+
+    t_update = 0
+    t_arrival = 0
+    A_have = False
+    B_have = False
+    for t in range(time):
+
+        # 2. Lógica de Transmissão (acontece no final do slot de tempo)
+        A_willsend = A_have and sends_A[t]
+        B_willsend = B_have and sends_B[t]
+
+        if A_willsend and not B_willsend: # Sucesso de A
+            sum_X0_sqr += (t_arrival - t_update)**2
+            t_update = t
+            number_successes += 1
+            A_have = False
+        if B_willsend and not A_willsend:
+            B_have = False
+
+        # 3. Lógica de Chegada
+        if arrivals_A[t] and not A_have:
+            A_have = True
+            t_arrival = t
+        if arrivals_B[t]:
+            B_have = True
+
+    return (sum_X0_sqr / number_successes) if number_successes > 0 else None
+
+
+@njit
+def X1_sqr(arrival_prob, send_prob, time):
+
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
+
+    sum_X1_sqr = 0
+    number_successes = 0
+
+    # t_update = 0
+    t_arrival = 0
+    A_have = False
+    B_have = False
+    for t in range(time):
+
+        # 2. Lógica de Transmissão (acontece no final do slot de tempo)
+        A_willsend = A_have and sends_A[t]
+        B_willsend = B_have and sends_B[t]
+
+        if A_willsend and not B_willsend: # Sucesso de A
+            sum_X1_sqr += (t - t_arrival)**2
+            # t_update = t
+            number_successes += 1
+            A_have = False
+        if B_willsend and not A_willsend:
+            B_have = False
+
+        # 3. Lógica de Chegada
+        if arrivals_A[t] and not A_have:
+            A_have = True
+            t_arrival = t
+        if arrivals_B[t]:
+            B_have = True
+
+    return (sum_X1_sqr / number_successes) if number_successes > 0 else None
+
+
+@njit
 def occupation_up_pack(arrival_prob, send_prob, time):
     """L_up -> probabilidade de encontrar um pacote que será transmitido com
     sucesso, olhando para algum timeslot aleatório"""
@@ -335,6 +446,9 @@ def AAoI_PAoI_sim(arrival_prob, send_prob, time):
 
     for t in range(time):
 
+        # 4. Armazena o estado do AoI no final do processo
+        AAoI += current_aoi_A
+        
         # 1. A idade no destino sempre aumenta em 1 a cada time step
         current_aoi_A += 1
 
@@ -344,8 +458,8 @@ def AAoI_PAoI_sim(arrival_prob, send_prob, time):
 
         # Sucesso de A
         if A_tries and not B_tries:
-            PAoI += current_aoi_A - 1
-            current_aoi_A = (t - tA_arrival) + 1
+            PAoI += current_aoi_A
+            current_aoi_A = (t - tA_arrival)
             successes += 1
             A_have = False
 
@@ -362,11 +476,8 @@ def AAoI_PAoI_sim(arrival_prob, send_prob, time):
         if arrivals_B[t]:
             B_have = True
 
-        # 4. Armazena o estado do AoI no final do processo
-        AAoI += current_aoi_A
-
     if successes > 0:
-        AAoI = AAoI / time
+        AAoI = AAoI / time + 1/2
         PAoI = PAoI / successes
     else:
         AAoI = None
@@ -378,7 +489,7 @@ def AAoI_PAoI_sim(arrival_prob, send_prob, time):
 def evolution_AoI_sim(arrival_prob, send_prob, time=100):
     ev_aoi_A = np.empty(time)
     ev_aoi_B = np.empty(time)
-    times_succes_pack = np.empty(time)
+    arrivals_succes_pack = np.empty(time)
 
     # rolagem de todos os dados
     arrivals_A = np.random.random(time) < arrival_prob
@@ -391,6 +502,7 @@ def evolution_AoI_sim(arrival_prob, send_prob, time=100):
     current_aoi_B = 0
     successes = 0
     PAoI = 0
+    AAoI = 0
 
     # Variáveis dos transmissores
     tA_arrival = 0
@@ -399,40 +511,42 @@ def evolution_AoI_sim(arrival_prob, send_prob, time=100):
     B_have = False
 
     for t in range(time):
+      
+        AAoI += current_aoi_A
+      
+        # 1. A idade no destino sempre aumenta em 1 a cada time step
+        current_aoi_A += 1
+        current_aoi_B += 1
 
-      # 2. Lógica de Transmissão (acontece no slot)
-      A_tries = A_have and sends_A[t]
-      B_tries = B_have and sends_B[t]
+        # 2. Lógica de Transmissão (acontece no slot)
+        A_tries = A_have and sends_A[t]
+        B_tries = B_have and sends_B[t]
 
-      # Sucesso de A
-      if A_tries and not B_tries:
-        PAoI += current_aoi_A - 1
-        current_aoi_A = (t - tA_arrival) + 1
-        times_succes_pack[successes] = tA_arrival
-        successes += 1
-        A_have = False
+        # Sucesso de A
+        if A_tries and not B_tries:
+            PAoI += current_aoi_A - 1
+            current_aoi_A = (t - tA_arrival) + 1
+            arrivals_succes_pack[successes] = tA_arrival
+            successes += 1
+            A_have = False
 
-      # Sucesso de B
-      if B_tries and not A_tries:
-        current_aoi_B = (t - tB_arrival) + 1
-        B_have = False
+        # Sucesso de B
+        if B_tries and not A_tries:
+            current_aoi_B = (t - tB_arrival) + 1
+            B_have = False
 
-      # 3. Lógica de Chegada (com substituição). Desde o tempo 0, pode ter pacotes.
-      # aqui, ficou mais fácil deixar as chegadas neste ponto
-      if arrivals_A[t]:
-        tA_arrival = t
-        A_have = True
+        # 3. Lógica de Chegada (com substituição). Desde o tempo 0, pode ter pacotes.
+        # aqui, ficou mais fácil deixar as chegadas neste ponto
+        if arrivals_A[t]:
+            tA_arrival = t
+            A_have = True
 
-      if arrivals_B[t]:
-        tB_arrival = t
-        B_have = True
+        if arrivals_B[t]:
+            tB_arrival = t
+            B_have = True
 
-      # 4. Armazena o estado do AoI no final do processo
-      ev_aoi_A[t] = current_aoi_A
-      ev_aoi_B[t] = current_aoi_B
+        # 4. Armazena o estado do AoI no final do processo
+        ev_aoi_A[t] = current_aoi_A
+        ev_aoi_B[t] = current_aoi_B
 
-    # 1. A idade no destino sempre aumenta em 1 a cada time step
-      current_aoi_A += 1
-      current_aoi_B += 1
-
-    return ev_aoi_A, ev_aoi_B, times_succes_pack[:successes], PAoI/successes, successes
+    return ev_aoi_A, ev_aoi_B, arrivals_succes_pack[:successes], PAoI/successes, AAoI/time, successes
