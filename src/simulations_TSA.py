@@ -3,7 +3,7 @@ from src.simulations import gen_events
 
 
 @njit
-def AAoI_PAoI_sim(arrival_prob, send_prob, time, threshold=0):
+def AAoI_PAoI_sim(arrival_prob, send_prob, time, threshold=1):
 
     # rolagem de todos os dados
     (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(

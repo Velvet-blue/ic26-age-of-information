@@ -1,4 +1,5 @@
-from src.config import np, plt, sp
+from time import time
+from src.config import np, plt, sp, minimize_scalar
 from joblib import Parallel, delayed
 import os
 
@@ -7,7 +8,9 @@ PLOT_INTERVAL = 0.1
 
 P_DOMAIN = np.arange(PAR_STEP, 1.0, PAR_STEP)
 A_DOMAIN = np.arange(PAR_STEP, 1.0 + PAR_STEP, PAR_STEP)
-PLOT_DOMAIN = np.arange(0.1,  1.1, .1)
+# PLOT_DOMAIN = np.arange(0.1,  1.1, .1)
+PLOT_DOMAIN = np.array([0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.0])
+T_DOMAIN = np.arange(1, 11, 1)
 
 
 def simulate_metric(metric_func, time: int, name: str = "", method="numpy"):
@@ -59,6 +62,18 @@ def simulate_metric(metric_func, time: int, name: str = "", method="numpy"):
     return simulated_data
 
 
+def simulate_metric_TSA(metric_func, time: int, name: str = ""):
+    # método usando a função vetorizada da métrica
+    vec_func = np.vectorize(metric_func)
+    P, A, T = np.meshgrid(P_DOMAIN, A_DOMAIN, T_DOMAIN)
+    # !!!
+    simulated_data = vec_func(arrival_prob=A, send_prob=P, threshold=T, time=time)
+    if name != "":
+        np.save(f'data/{name}.npy', simulated_data)
+        print(f"Dados salvos em 'data/{name}.npy'.")
+    return simulated_data
+
+
 def make_metric_func(metrics_data):
     """
     Create a metric function that retrieves precomputed metric values from a
@@ -96,6 +111,25 @@ def make_metric_func(metrics_data):
             "metrics_data deve ser uma expressão simbólica ou um "
             "array numpy."
         )
+    
+
+def optimize_metric(metric_func, find_max=False):
+
+    # lista_a = [i/1000 for i in range(2, 1001, 2)]
+    opt_metric = {"po":[], "paoi_min":[]}
+    if find_max:
+        metric_func_a = lambda p, a: -metric_func(a, p)  # inverte para maximizar
+    else:
+        metric_func_a = lambda p ,a: metric_func(a, p)  # exemplo fixando p=0.5
+
+    for a_val in A_DOMAIN:
+        # Busca o mínimo de p no intervalo [0, 1] para cada 'a'
+        res = minimize_scalar(metric_func_a, args=(a_val,), bounds=(0, 1), method='bounded')
+        opt_metric["po"].append(res.x)
+        opt_metric["paoi_min"].append(res.fun)
+    if find_max:
+        opt_metric["paoi_min"] = [-val for val in opt_metric["paoi_min"]]  # reverte os valores para o máximo
+    return opt_metric
 
 
 def plot_metric(
@@ -104,16 +138,19 @@ def plot_metric(
         cmap: str,
         title: str,
         axis: str = "p",
-        yrange = None
+        yrange = None,
+        find_max = False
         ) -> None:
+    opt_metric = optimize_metric(analytical_func, find_max=find_max)
     plt.figure(figsize=(10, 6))
     color_map = plt.get_cmap(cmap)
+
     match axis:
         case "p":
             prob_domain = P_DOMAIN
             plot_domain = PLOT_DOMAIN
             ctrl_param = "$a$"
-            xlabel = "Probabilidade de acesso ($p$)"
+            xlabel = "access probability ($p$)"
             calc_math = lambda x: analytical_func(x, prob_domain)
             calc_sim = lambda x: simulation_data_func(arrival_prob=x, send_prob=prob_domain)
         case "a":
@@ -135,13 +172,17 @@ def plot_metric(
                  color=color, linestyle='-', lw=2)
         plt.plot(prob_domain, simulated_plot, color=color,
                  linestyle='None', marker='o', markersize=2)
-    plt.xlabel(xlabel)
-    plt.ylabel("Métrica")
+        
+    # otimização da métrica
+    plt.plot(opt_metric["po"], opt_metric["paoi_min"], label='optimization',
+             color='red', linestyle='--', lw=1)
+    plt.xlabel(xlabel, fontsize=20)
+    plt.ylabel("Metric", fontsize=20)
     if yrange is not None:
         plt.ylim(yrange)
     plt.xlim(0, 1)
-    plt.title(title)
-    plt.legend(title = f"Parâmetro {ctrl_param}", bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.title(title, fontsize=30)
+    plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.grid(True)
     plt.show()
 
@@ -152,7 +193,8 @@ def compare_metric_plot(
         title: str,
         cmap: str = "viridis",
         axis: str = "p",
-        yrange = None
+        yrange = None,
+        find_max = False
         ) -> None:
     metric_func = make_metric_func(analytical_expr)
     simulated_metric = make_metric_func(simulation_data)
@@ -162,7 +204,8 @@ def compare_metric_plot(
         cmap=cmap,
         title=title,
         axis=axis,
-        yrange=yrange
+        yrange=yrange,
+        find_max=find_max
     )
 
 
