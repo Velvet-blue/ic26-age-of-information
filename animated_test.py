@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import time
-from simulations import evolution_AoI_sim
+from src.simulations import evolution_AoI_sim
 
 plt.ion() # Liga o modo interativo
 fig, ax = plt.subplots()

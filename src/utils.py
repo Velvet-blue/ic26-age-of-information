@@ -96,13 +96,26 @@ def make_metric_func(metrics_data):
     elif isinstance(metrics_data, np.ndarray):
 
         domain_size = len(metrics_data)  # usar PROB_DOMAIN evita conflitos
+        match metrics_data.ndim:
+            case 2:
+                def metric_func(arrival_prob: float, send_prob: float):
+                    # encontra os índices mais próximos no domínio
+                    a_idx = int(np.round(arrival_prob*(domain_size) - 1))
+                    p_idx = int(np.round(send_prob*(domain_size) - 1))
 
-        def metric_func(arrival_prob: float, send_prob: float):
-            # encontra os índices mais próximos no domínio
-            a_idx = int(np.round(arrival_prob*(domain_size) - 1))
-            p_idx = int(np.round(send_prob*(domain_size) - 1))
-            return metrics_data[a_idx, p_idx]
+                    return metrics_data[a_idx, p_idx]
         
+            case 3:
+                def metric_func(arrival_prob: float, send_prob: float, threshold: int):
+                    # encontra os índices mais próximos no domínio
+                    a_idx = int(np.round(arrival_prob*(domain_size) - 1))
+                    p_idx = int(np.round(send_prob*(domain_size) - 1))
+
+                    gamma_idx = threshold - 1
+                    return metrics_data[a_idx, p_idx, gamma_idx]
+            case _:
+                raise ValueError("Array de métricas deve ser 2D ou 3D.")
+
         return np.vectorize(metric_func)
     
     else:
@@ -116,7 +129,7 @@ def make_metric_func(metrics_data):
 def optimize_metric(metric_func, find_max=False):
 
     # lista_a = [i/1000 for i in range(2, 1001, 2)]
-    opt_metric = {"po":[], "paoi_min":[]}
+    opt_metric = {"p_opt":[], "metric_opt":[]}
     if find_max:
         metric_func_a = lambda p, a: -metric_func(a, p)  # inverte para maximizar
     else:
@@ -125,12 +138,51 @@ def optimize_metric(metric_func, find_max=False):
     for a_val in A_DOMAIN:
         # Busca o mínimo de p no intervalo [0, 1] para cada 'a'
         res = minimize_scalar(metric_func_a, args=(a_val,), bounds=(0, 1), method='bounded')
-        opt_metric["po"].append(res.x)
-        opt_metric["paoi_min"].append(res.fun)
+        opt_metric["p_opt"].append(res.x)
+        opt_metric["metric_opt"].append(res.fun)
     if find_max:
-        opt_metric["paoi_min"] = [-val for val in opt_metric["paoi_min"]]  # reverte os valores para o máximo
+        opt_metric["metric_opt"] = [-val for val in opt_metric["metric_opt"]]  # reverte os valores para o máximo
     return opt_metric
 
+
+def optimize_metric_grid(metric_func, find_max=False):
+    """
+    Otimiza uma métrica buscando exaustivamente sobre P_DOMAIN e T_DOMAIN
+    para cada valor em A_DOMAIN.
+    """
+    results = {
+        "p_opt": [],
+        "gamma_opt": [],
+        "metric_opt": []
+    }
+
+    for a_val in A_DOMAIN:
+        # Reinicia os recordes para o 'a' atual
+        best_p = None
+        best_gamma = None
+        best_metric = float('-inf') if find_max else float('inf')
+
+        # Testa todas as combinações (p, gamma)
+        for gamma_val in T_DOMAIN:
+            for p_val in P_DOMAIN:
+                
+                # Calcula a métrica para a trinca atual
+                current_metric = metric_func(a_val, p_val, gamma_val)
+
+                # Verifica se é o melhor valor encontrado até agora
+                is_better = (current_metric > best_metric) if find_max else (current_metric < best_metric)
+                
+                if is_better:
+                    best_metric = current_metric
+                    best_p = p_val
+                    best_gamma = gamma_val
+
+        # Salva o cenário campeão para este 'a'
+        results["p_opt"].append(best_p)
+        results["gamma_opt"].append(best_gamma)
+        results["metric_opt"].append(best_metric)
+
+    return results
 
 def plot_metric(
         analytical_func,
@@ -174,7 +226,7 @@ def plot_metric(
                  linestyle='None', marker='o', markersize=2)
         
     # otimização da métrica
-    plt.plot(opt_metric["po"], opt_metric["paoi_min"], label='optimization',
+    plt.plot(opt_metric["p_opt"], opt_metric["metric_opt"], label='optimization',
              color='red', linestyle='--', lw=1)
     plt.xlabel(xlabel, fontsize=20)
     plt.ylabel("Metric", fontsize=20)
