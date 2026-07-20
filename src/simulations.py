@@ -477,11 +477,11 @@ def AAoI_PAoI_sim(arrival_prob, send_prob, time):
             B_have = True
 
     if successes > 0:
-        AAoI = AAoI / time + 1/2
+        AAoI = AAoI / time
         PAoI = PAoI / successes
     else:
-        AAoI = None
-        PAoI = None
+        AAoI = current_aoi_A
+        PAoI = current_aoi_A
     return (AAoI, PAoI)
 
 
