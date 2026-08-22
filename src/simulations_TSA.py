@@ -70,12 +70,11 @@ def evolution_AoI_sim(arrival_prob, send_prob, threshold, time=100):
     ev_aoi_A = np.empty(time)
     ev_aoi_B = np.empty(time)
     arrivals_succes_pack = np.empty(time)
+    updates = np.empty(time)
 
     # rolagem de todos os dados
-    arrivals_A = np.random.random(time) < arrival_prob
-    arrivals_B = np.random.random(time) < arrival_prob
-    sends_A = np.random.random(time) < send_prob
-    sends_B = np.random.random(time) < send_prob
+    (arrivals_A, arrivals_B, sends_A, sends_B) = gen_events(
+        a=arrival_prob, p=send_prob, time=time)
 
     # Do ponto de vista do destino, a idade inicial é 0 (ou o tempo atual)
     current_aoi_A = 0
@@ -91,6 +90,9 @@ def evolution_AoI_sim(arrival_prob, send_prob, threshold, time=100):
     B_have = False
 
     for t in range(time):
+
+        ev_aoi_A[t] = current_aoi_A
+        ev_aoi_B[t] = current_aoi_B
       
         # 1. A idade no destino sempre aumenta em 1 a cada time step
         current_aoi_A += 1
@@ -105,6 +107,7 @@ def evolution_AoI_sim(arrival_prob, send_prob, threshold, time=100):
             PAoI += current_aoi_A
             current_aoi_A = (t - tA_arrival)
             arrivals_succes_pack[successes] = tA_arrival
+            updates[successes] = t
             successes += 1
             A_have = False
 
@@ -126,10 +129,8 @@ def evolution_AoI_sim(arrival_prob, send_prob, threshold, time=100):
         AAoI += current_aoi_A
 
         # 4. Armazena o estado do AoI no final do processo
-        ev_aoi_A[t] = current_aoi_A
-        ev_aoi_B[t] = current_aoi_B
 
-    return ev_aoi_A, ev_aoi_B, arrivals_succes_pack[:successes], PAoI/successes, AAoI/time, successes
+    return ev_aoi_A, ev_aoi_B, arrivals_succes_pack[:successes], updates, PAoI/successes, AAoI/time, successes
 
 
 @njit

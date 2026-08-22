@@ -1,6 +1,9 @@
 from src.config import np, njit
 
+SEED = 0
 
+
+# numba não suporta random generators
 @njit
 def gen_events(a, p, time):
     """
@@ -10,6 +13,13 @@ def gen_events(a, p, time):
     arrivals_B = np.random.random(time) < a
     sends_A = np.random.random(time) < p
     sends_B = np.random.random(time) < p
+    """
+    rng = np.random.default_rng(seed=SEED)
+    arrivals_A = rng.binomial(n=1, p=a, size=time).astype(np.bool_)
+    arrivals_B = rng.binomial(n=1, p=a, size=time).astype(np.bool_)
+    sends_A = rng.binomial(n=1, p=p, size=time).astype(np.bool_)
+    sends_B = rng.binomial(n=1, p=p, size=time).astype(np.bool_)
+    """
     return arrivals_A, arrivals_B, sends_A, sends_B
 
 
