@@ -137,7 +137,7 @@ def optimize_metric(metric_func, find_max=False):
 
     for a_val in A_DOMAIN:
         # Busca o mínimo de p no intervalo [0, 1] para cada 'a'
-        res = minimize_scalar(metric_func_a, args=(a_val,), bounds=(0, 1), method='bounded')
+        res = minimize_scalar(metric_func_a, args=(a_val,), bounds=(0, 0.98), method='bounded')
         opt_metric["p_opt"].append(res.x)
         opt_metric["metric_opt"].append(res.fun)
     if find_max:
@@ -189,6 +189,7 @@ def plot_metric(
         simulation_data_func,
         cmap: str,
         title: str,
+        metric: str,
         axis: str = "p",
         yrange = None,
         find_max = False
@@ -202,14 +203,14 @@ def plot_metric(
             prob_domain = P_DOMAIN
             plot_domain = PLOT_DOMAIN
             ctrl_param = "$a$"
-            xlabel = "access probability ($p$)"
+            xlabel = "$p$"
             calc_math = lambda x: analytical_func(x, prob_domain)
             calc_sim = lambda x: simulation_data_func(arrival_prob=x, send_prob=prob_domain)
         case "a":
             prob_domain = A_DOMAIN
             plot_domain = PLOT_DOMAIN[PLOT_DOMAIN != 1.0]  # evita o 1.0 exato para $p$
             ctrl_param = "$p$"
-            xlabel = "Probabilidade de chegada ($a$)"
+            xlabel = "$a$"
             calc_math = lambda x: analytical_func(prob_domain, x)
             calc_sim = lambda x: simulation_data_func(arrival_prob=prob_domain, send_prob=x)
         case _:
@@ -226,15 +227,16 @@ def plot_metric(
                  linestyle='None', marker='o', markersize=2)
         
     # otimização da métrica
-    plt.plot(opt_metric["p_opt"], opt_metric["metric_opt"], label='optimization',
-             color='red', linestyle='--', lw=1)
+    # plt.plot(opt_metric["p_opt"], opt_metric["metric_opt"], label='optimization',
+    #          color='red', linestyle='--', lw=1)
     plt.xlabel(xlabel, fontsize=20)
-    plt.ylabel("Metric", fontsize=20)
+    plt.ylabel(metric, fontsize=20)
     if yrange is not None:
         plt.ylim(yrange)
     plt.xlim(0, 1)
-    plt.title(title, fontsize=30)
-    plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.xticks(np.arange(0, 1.1, 0.1))
+    plt.title(title, fontsize=20)
+    plt.legend(title=f"Parâmetro {ctrl_param}", title_fontsize=20, fontsize=20, bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.grid(True)
     plt.show()
 
@@ -243,6 +245,7 @@ def compare_metric_plot(
         analytical_expr: sp.Expr,
         simulation_data: np.ndarray,
         title: str,
+        metric: str,
         cmap: str = "viridis",
         axis: str = "p",
         yrange = None,
@@ -255,6 +258,7 @@ def compare_metric_plot(
         simulation_data_func=simulated_metric,
         cmap=cmap,
         title=title,
+        metric=metric,
         axis=axis,
         yrange=yrange,
         find_max=find_max
@@ -287,6 +291,7 @@ if __name__ == "__main__":
         analytical_expr=throughput_expr,
         simulation_data=throughput_data,
         title="Throughput",
+        metric="Throughput",
         cmap="viridis",
         axis="p"
     )
